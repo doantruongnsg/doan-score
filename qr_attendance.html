@@ -1,9 +1,170 @@
-const firebaseConfig = {
-    apiKey: "AIzaSy...",
-    authDomain: "doan-score-attendance.firebaseapp.com",
-    databaseURL: "https://doan-score-attendance-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "doan-score-attendance",
-    storageBucket: "doan-score-attendance.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "1:123456789:web:YmEyNTI4MmMtMDQxYy00NjZlLTlmMmYtM2RmOTNjODM1MGM1"
-};
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Điểm danh bằng mã QR - Đoàn Trường CĐBK Nam Sài Gòn</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #333; margin-top: 10px; }
+        label { display: block; margin: 10px 0 5px; font-weight: bold; }
+        select, input, button { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: #4CAF50; color: white; cursor: pointer; }
+        button:hover { background-color: #45a049; }
+        #qrCode { text-align: center; margin: 20px 0; }
+        #history { margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        #exportBtn { background-color: #008CBA; }
+        #exportBtn:hover { background-color: #007B9A; }
+        .logo { display: block; margin: 0 auto 10px; width: 200px; height: auto; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Thêm Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+</head>
+<body>
+    <div class="container">
+        <img src="https://doantruongnsg.github.io/doan-score/logo_doan.png" alt="Logo Đoàn Trường CĐBK Nam Sài Gòn" class="logo">
+        <h1>Điểm danh bằng mã QR<br>Đoàn Trường CĐBK Nam Sài Gòn</h1>
+
+        <!-- Form tạo mã QR cho lớp học/sự kiện -->
+        <form id="qrForm">
+            <label for="eventName">Tên lớp học/sự kiện:</label>
+            <input type="text" id="eventName" name="eventName" required placeholder="Ví dụ: CNTT K21 - Buổi 1">
+            <label for="eventDate">Ngày diễn ra:</label>
+            <input type="date" id="eventDate" name="eventDate" required>
+            <button type="button" onclick="generateQRCode()">Tạo mã QR</button>
+        </form>
+
+        <!-- Hiển thị mã QR -->
+        <div id="qrCode"></div>
+
+        <!-- Hướng dẫn -->
+        <div id="instructions" style="text-align: center; margin-top: 20px;">
+            <p>Quét mã QR để điểm danh. Dữ liệu sẽ được lưu và hiển thị bên dưới.</p>
+        </div>
+
+        <!-- Lịch sử điểm danh -->
+        <div id="history">
+            <h3>Lịch sử điểm danh</h3>
+            <button id="exportBtn" type="button" onclick="exportToExcel()">Xuất file Excel</button>
+            <table id="historyTable">
+                <thead>
+                    <tr>
+                        <th>Lớp/Sự kiện</th>
+                        <th>Ngày</th>
+                        <th>Họ và tên</th>
+                        <th>Mã số sinh viên</th>
+                        <th>Thời gian điểm danh</th>
+                    </tr>
+                </thead>
+                <tbody id="historyBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Cấu hình Firebase (thay bằng cấu hình thật của bạn)
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            databaseURL: "YOUR_DATABASE_URL",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Khởi tạo Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Tạo mã QR
+        function generateQRCode() {
+            const eventName = document.getElementById("eventName").value;
+            const eventDate = document.getElementById("eventDate").value;
+
+            if (!eventName || !eventDate) {
+                alert("Vui lòng điền đầy đủ thông tin!");
+                return;
+            }
+
+            // Tạo URL dẫn đến trang checkin.html với thông tin lớp học/sự kiện
+            const encodedEventName = encodeURIComponent(eventName);
+            const encodedEventDate = encodeURIComponent(eventDate);
+            const qrUrl = `https://doantruongnsg.github.io/doan-score/checkin.html?event=${encodedEventName}&date=${encodedEventDate}`;
+
+            const qrCodeDiv = document.getElementById("qrCode");
+            qrCodeDiv.innerHTML = ""; // Xóa mã QR cũ
+
+            // Tạo mã QR
+            QRCode.toCanvas(qrUrl, { width: 200 }, (error, canvas) => {
+                if (error) {
+                    console.error(error);
+                    return;
+                }
+                qrCodeDiv.appendChild(canvas);
+            });
+        }
+
+        // Cập nhật bảng lịch sử từ Firebase
+        function updateHistoryTable() {
+            const historyRef = database.ref("attendance");
+            historyRef.on("value", (snapshot) => {
+                const history = snapshot.val() || {};
+                const historyArray = Object.values(history);
+                const tbody = document.getElementById("historyBody");
+                tbody.innerHTML = "";
+                historyArray.forEach(item => {
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${item.eventName}</td>
+                        <td>${item.eventDate}</td>
+                        <td>${item.studentName}</td>
+                        <td>${item.studentId}</td>
+                        <td>${item.timestamp}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            });
+        }
+
+        // Xuất file Excel
+        function exportToExcel() {
+            const historyRef = database.ref("attendance");
+            historyRef.once("value", (snapshot) => {
+                const history = snapshot.val() || {};
+                const historyArray = Object.values(history);
+                if (historyArray.length === 0) {
+                    alert("Chưa có dữ liệu để xuất!");
+                    return;
+                }
+
+                const data = [
+                    ["Lớp/Sự kiện", "Ngày", "Họ và tên", "Mã số sinh viên", "Thời gian điểm danh"],
+                    ...historyArray.map(item => [
+                        item.eventName,
+                        item.eventDate,
+                        item.studentName,
+                        item.studentId,
+                        item.timestamp
+                    ])
+                ];
+
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "AttendanceHistory");
+                XLSX.writeFile(wb, "attendance_history.xlsx");
+            });
+        }
+
+        // Cập nhật bảng lịch sử khi tải trang
+        window.onload = updateHistoryTable;
+    </script>
+</body>
+</html>
