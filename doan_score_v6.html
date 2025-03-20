@@ -19,13 +19,6 @@
         th { background-color: #f2f2f2; }
         #exportBtn { background-color: #008CBA; }
         #exportBtn:hover { background-color: #007B9A; }
-        #uploadBtn { background-color: #FF9800; }
-        #uploadBtn:hover { background-color: #F57C00; }
-        #confirmUpload { display: none; margin-top: 10px; padding: 10px; border: 1px solid #ddd; background: #f9f9f9; }
-        #confirmBtn { background-color: #2196F3; }
-        #confirmBtn:hover { background-color: #1976D2; }
-        #cancelBtn { background-color: #f44336; }
-        #cancelBtn:hover { background-color: #d32f2f; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -67,15 +60,7 @@
 
         <div id="history">
             <h3>Lịch sử phong trào</h3>
-            <input type="file" id="uploadFile" accept=".xlsx, .xls" style="display: none;" onchange="previewUpload(event)">
-            <button id="uploadBtn" type="button" onclick="document.getElementById('uploadFile').click()">Upload danh sách</button>
             <button id="exportBtn" type="button" onclick="exportToExcel()">Xuất file Excel</button>
-            <div id="confirmUpload">
-                <p>Đã chọn file: <span id="fileName"></span></p>
-                <p>Số người tham gia: <span id="rowCount"></span></p>
-                <button id="confirmBtn" type="button" onclick="confirmUpload()">Xác nhận</button>
-                <button id="cancelBtn" type="button" onclick="cancelUpload()">Hủy</button>
-            </div>
             <table id="historyTable">
                 <thead>
                     <tr>
@@ -103,6 +88,9 @@
 
         function calculateScore(className, level, required, attended) {
             const config = levels[level];
+            if (!config || isNaN(required) || isNaN(attended) || required <= 0) {
+                return { ratioScore: 0, total: 0, ranking: "Không đạt (<50%)" };
+            }
             let ratioScore = Math.min((attended / required) * config.ratio, config.ratio);
             const total = ratioScore;
             let ranking;
@@ -150,15 +138,16 @@
             tbody.innerHTML = "";
             history.forEach(item => {
                 const row = document.createElement("tr");
+                const total = item.total !== undefined && item.total !== null ? item.total.toFixed(1) : "0";
                 row.innerHTML = `
-                    <td>${item.className}</td>
-                    <td>${item.movementName}</td>
-                    <td>${item.date}</td>
-                    <td>${item.participants}</td>
-                    <td>${item.level}</td>
+                    <td>${item.className || "Chưa xác định"}</td>
+                    <td>${item.movementName || "Chưa xác định"}</td>
+                    <td>${item.date || "Chưa xác định"}</td>
+                    <td>${item.participants || "Không ghi nhận"}</td>
+                    <td>${item.level || "Chưa xác định"}</td>
                     <td>${item.attended}/${item.required}</td>
-                    <td>${item.total.toFixed(1)}</td>
-                    <td>${item.ranking}</td>
+                    <td>${total}</td>
+                    <td>${item.ranking || "Không đạt (<50%)"}</td>
                 `;
                 tbody.appendChild(row);
             });
@@ -174,8 +163,14 @@
             const data = [
                 ["Lớp", "Phong trào", "Ngày", "Người tham gia", "Cấp", "Tham gia/Điều động", "Tổng điểm", "Xếp loại"],
                 ...history.map(item => [
-                    item.className, item.movementName, item.date, item.participants, item.level,
-                    `${item.attended}/${item.required}`, item.total.toFixed(1), item.ranking
+                    item.className || "Chưa xác định",
+                    item.movementName || "Chưa xác định",
+                    item.date || "Chưa xác định",
+                    item.participants || "Không ghi nhận",
+                    item.level || "Chưa xác định",
+                    `${item.attended}/${item.required}`,
+                    item.total !== undefined && item.total !== null ? item.total.toFixed(1) : "0",
+                    item.ranking || "Không đạt (<50%)"
                 ])
             ];
 
@@ -193,80 +188,6 @@
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "DoanHistory");
             XLSX.writeFile(wb, "doan_history.xlsx");
-        }
-
-        let uploadedData = null;
-
-        function previewUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-                if (jsonData.length < 2) {
-                    alert("File Excel rỗng hoặc không có dữ liệu!");
-                    return;
-                }
-
-                const headers = jsonData[0];
-                if (headers.length !== 1 || headers[0] !== "Họ tên") {
-                    alert("File Excel phải có duy nhất một cột 'Họ tên'!");
-                    return;
-                }
-
-                const participants = jsonData.slice(1).map(row => row[0]).filter(name => name);
-                uploadedData = participants;
-
-                document.getElementById("fileName").textContent = file.name;
-                document.getElementById("rowCount").textContent = participants.length;
-                document.getElementById("confirmUpload").style.display = "block";
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function confirmUpload() {
-            if (!uploadedData) return;
-
-            const className = document.getElementById("className").value || "Lớp mặc định";
-            const movementName = document.getElementById("movementName").value || "Phong trào mặc định";
-            const date = document.getElementById("date").value || "2025-03-20";
-            const level = document.getElementById("level").value || "Đoàn trường";
-            const required = parseInt(document.getElementById("required").value) || 10;
-            const attended = uploadedData.length; // Số người tham gia = số tên trong file
-
-            let history = JSON.parse(localStorage.getItem("doanHistory") || "[]");
-
-            uploadedData.forEach(participant => {
-                const scores = calculateScore(className, level, required, attended);
-                history.push({
-                    className,
-                    movementName,
-                    date,
-                    participants: participant,
-                    level,
-                    required,
-                    attended,
-                    total: scores.total,
-                    ranking: scores.ranking
-                });
-            });
-
-            localStorage.setItem("doanHistory", JSON.stringify(history));
-            updateHistoryTable();
-            alert("Đã upload danh sách thành công!");
-            cancelUpload();
-        }
-
-        function cancelUpload() {
-            uploadedData = null;
-            document.getElementById("confirmUpload").style.display = "none";
-            document.getElementById("uploadFile").value = "";
         }
 
         window.onload = updateHistoryTable;
