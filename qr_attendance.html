@@ -1,3 +1,12 @@
+html
+
+Xem Trước
+
+Thu gọn
+
+Bọc lại
+
+Sao chép
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -47,8 +56,8 @@
     </div>
 
     <script>
-        // Thay bằng URL Google Form của bạn
-        const googleFormUrl = "https://docs.google.com/forms/d/e/1FAIpQLSf1234567890/viewform"; // Thay bằng URL thật
+        // Thay bằng URL Google Form thật của bạn
+        const googleFormUrl = "https://docs.google.com/forms/d/e/1FAIpQLSfabc123xyz/viewform"; // Thay bằng URL thật
 
         // Tạo mã QR
         function generateQRCode() {
@@ -63,8 +72,8 @@
             // Tạo URL Google Form với thông tin điền sẵn
             const encodedEventName = encodeURIComponent(eventName);
             const encodedEventDate = encodeURIComponent(eventDate);
-            // Thay "entry.123" và "entry.456" bằng ID của các trường trong Google Form
-            const qrUrl = `${googleFormUrl}?usp=pp_url&entry.123=${encodedEventName}&entry.456=${encodedEventDate}`;
+            // Thay "entry.123456789" và "entry.987654321" bằng ID thật của các trường trong Google Form
+            const qrUrl = `${googleFormUrl}?usp=pp_url&entry.123456789=${encodedEventName}&entry.987654321=${encodedEventDate}`;
 
             const qrCodeDiv = document.getElementById("qrCode");
             qrCodeDiv.innerHTML = ""; // Xóa mã QR cũ
