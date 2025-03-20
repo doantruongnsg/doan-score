@@ -13,7 +13,7 @@
         button { background-color: #4CAF50; color: white; cursor: pointer; }
         button:hover { background-color: #45a049; }
         #qrCode { text-align: center; margin: 20px 0; }
-        #attendanceForm, #history { margin-top: 20px; }
+        #history { margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
@@ -21,7 +21,6 @@
         #exportBtn:hover { background-color: #007B9A; }
         .logo { display: block; margin: 0 auto 10px; width: 200px; height: auto; }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 </head>
 <body>
@@ -41,39 +40,15 @@
         <!-- Hiển thị mã QR -->
         <div id="qrCode"></div>
 
-        <!-- Form điểm danh -->
-        <div id="attendanceForm" style="display: none;">
-            <h3>Form điểm danh</h3>
-            <form id="checkInForm">
-                <label for="studentName">Họ và tên:</label>
-                <input type="text" id="studentName" name="studentName" required placeholder="Ví dụ: Nguyễn Văn A">
-                <label for="studentId">Mã số sinh viên:</label>
-                <input type="text" id="studentId" name="studentId" required placeholder="Ví dụ: 123456">
-                <button type="button" onclick="submitAttendance()">Ghi nhận điểm danh</button>
-            </form>
-        </div>
-
-        <!-- Lịch sử điểm danh -->
-        <div id="history">
-            <h3>Lịch sử điểm danh</h3>
-            <button id="exportBtn" type="button" onclick="exportToExcel()">Xuất file Excel</button>
-            <table id="historyTable">
-                <thead>
-                    <tr>
-                        <th>Lớp/Sự kiện</th>
-                        <th>Ngày</th>
-                        <th>Họ và tên</th>
-                        <th>Mã số sinh viên</th>
-                        <th>Thời gian điểm danh</th>
-                    </tr>
-                </thead>
-                <tbody id="historyBody"></tbody>
-            </table>
+        <!-- Hướng dẫn -->
+        <div id="instructions" style="text-align: center; margin-top: 20px;">
+            <p>Quét mã QR để điểm danh. Dữ liệu sẽ được lưu vào Google Sheets.</p>
         </div>
     </div>
 
     <script>
-        let currentEvent = null;
+        // Thay bằng URL Google Form của bạn
+        const googleFormUrl = "https://docs.google.com/forms/d/e/1FAIpQLSf1234567890/viewform"; // Thay bằng URL thật
 
         // Tạo mã QR
         function generateQRCode() {
@@ -85,101 +60,24 @@
                 return;
             }
 
-            currentEvent = { name: eventName, date: eventDate };
-            const qrData = JSON.stringify(currentEvent);
+            // Tạo URL Google Form với thông tin điền sẵn
+            const encodedEventName = encodeURIComponent(eventName);
+            const encodedEventDate = encodeURIComponent(eventDate);
+            // Thay "entry.123" và "entry.456" bằng ID của các trường trong Google Form
+            const qrUrl = `${googleFormUrl}?usp=pp_url&entry.123=${encodedEventName}&entry.456=${encodedEventDate}`;
+
             const qrCodeDiv = document.getElementById("qrCode");
             qrCodeDiv.innerHTML = ""; // Xóa mã QR cũ
 
             // Tạo mã QR
-            QRCode.toCanvas(qrData, { width: 200 }, (error, canvas) => {
+            QRCode.toCanvas(qrUrl, { width: 200 }, (error, canvas) => {
                 if (error) {
                     console.error(error);
                     return;
                 }
                 qrCodeDiv.appendChild(canvas);
             });
-
-            // Hiển thị form điểm danh
-            document.getElementById("attendanceForm").style.display = "block";
         }
-
-        // Ghi nhận điểm danh
-        function submitAttendance() {
-            const studentName = document.getElementById("studentName").value;
-            const studentId = document.getElementById("studentId").value;
-
-            if (!studentName || !studentId || !currentEvent) {
-                alert("Vui lòng điền đầy đủ thông tin và tạo mã QR trước!");
-                return;
-            }
-
-            const timestamp = new Date().toLocaleString("vi-VN");
-            const attendanceRecord = {
-                eventName: currentEvent.name,
-                eventDate: currentEvent.date,
-                studentName: studentName,
-                studentId: studentId,
-                timestamp: timestamp
-            };
-
-            // Lưu vào localStorage
-            let history = JSON.parse(localStorage.getItem("attendanceHistory") || "[]");
-            history.push(attendanceRecord);
-            localStorage.setItem("attendanceHistory", JSON.stringify(history));
-
-            // Cập nhật bảng lịch sử
-            updateHistoryTable();
-
-            // Reset form
-            document.getElementById("checkInForm").reset();
-            alert("Điểm danh thành công!");
-        }
-
-        // Cập nhật bảng lịch sử
-        function updateHistoryTable() {
-            const history = JSON.parse(localStorage.getItem("attendanceHistory") || "[]");
-            const tbody = document.getElementById("historyBody");
-            tbody.innerHTML = "";
-            history.forEach(item => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>${item.eventName}</td>
-                    <td>${item.eventDate}</td>
-                    <td>${item.studentName}</td>
-                    <td>${item.studentId}</td>
-                    <td>${item.timestamp}</td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
-
-        // Xuất file Excel
-        function exportToExcel() {
-            const history = JSON.parse(localStorage.getItem("attendanceHistory") || "[]");
-            if (history.length === 0) {
-                alert("Chưa có dữ liệu để xuất!");
-                return;
-            }
-
-            const data = [
-                ["Lớp/Sự kiện", "Ngày", "Họ và tên", "Mã số sinh viên", "Thời gian điểm danh"],
-                ...history.map(item => [
-                    item.eventName,
-                    item.eventDate,
-                    item.studentName,
-                    item.studentId,
-                    item.timestamp
-                ])
-            ];
-
-            const ws = XLSX.utils.aoa_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "AttendanceHistory");
-            XLSX.writeFile(wb, "attendance_history.xlsx");
-        }
-
-        // Cập nhật bảng lịch sử khi tải trang
-        window.onload = updateHistoryTable;
     </script>
 </body>
 </html>
