@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý điểm phong trào Đoàn</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #333; }
+        label { display: block; margin: 10px 0 5px; font-weight: bold; }
+        select, input, button { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: #4CAF50; color: white; cursor: pointer; }
+        button:hover { background-color: #45a049; }
+        #result { margin-top: 20px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; display: none; }
+        #history { margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        #exportBtn { background-color: #008CBA; }
+        #exportBtn:hover { background-color: #007B9A; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Quản lý điểm phong trào Đoàn</h1>
+        <form id="scoreForm">
+            <label for="className">Tên lớp:</label>
+            <input type="text" id="className" name="className" required placeholder="Ví dụ: CNTT K21">
+
+            <label for="movementName">Tên phong trào:</label>
+            <input type="text" id="movementName" name="movementName" required placeholder="Ví dụ: Mùa hè xanh">
+
+            <label for="date">Ngày tham gia:</label>
+            <input type="date" id="date" name="date" required>
+
+            <label for="participants">Tên người tham gia:</label>
+            <input type="text" id="participants" name="participants" placeholder="Ví dụ: Nguyễn Văn A, Trần Thị B">
+
+            <label for="level">Cấp phong trào:</label>
+            <select id="level" name="level">
+                <option value="Thành Đoàn">Thành Đoàn (15 điểm)</option>
+                <option value="Quận Đoàn">Quận Đoàn (12 điểm)</option>
+                <option value="Đoàn trường">Đoàn trường (10 điểm)</option>
+            </select>
+
+            <label for="required">Số người điều động:</label>
+            <input type="number" id="required" name="required" min="1" required>
+
+            <label for="attended">Số người tham gia:</label>
+            <input type="number" id="attended" name="attended" min="0" required>
+
+            <button type="button" onclick="calculateAndSave()">Tính và lưu điểm</button>
+        </form>
+
+        <div id="result">
+            <h3>Kết quả</h3>
+            <p>Phong trào: <span id="resultMovement"></span></p>
+            <p>Ngày tham gia: <span id="resultDate"></span></p>
+            <p>Người tham gia: <span id="result debiticipants"></span></p>
+            <p>Điểm tỷ lệ: <span id="ratioScore"></span></p>
+            <p>Xếp loại: <span id="ranking"></span></p>
+            <p><strong>Tổng điểm: <span id="totalScore"></span></strong></p>
+            <p><em>*Xếp loại: Xuất sắc (≥90%), Tốt (70% - dưới 90%), Đạt (50% - dưới 70%), Không đạt (<50%)</em></p>
+        </div>
+
+        <div id="history">
+            <h3>Lịch sử phong trào</h3>
+            <button id="exportBtn" type="button" onclick="exportToCSV()">Xuất file Excel</button>
+            <table id="historyTable">
+                <thead>
+                    <tr>
+                        <th>Lớp</th>
+                        <th>Phong trào</th>
+                        <th>Ngày</th>
+                        <th>Người tham gia</th>
+                        <th>Cấp</th>
+                        <th>Tham gia/Điều động</th>
+                        <th>Tổng điểm</th>
+                        <th>Xếp loại</th>
+                    </tr>
+                </thead>
+                <tbody id="historyBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const levels = {
+            "Thành Đoàn": { max: 15, ratio: 15 },
+            "Quận Đoàn": { max: 12, ratio: 12 },
+            "Đoàn trường": { max: 10, ratio: 10 }
+        };
+
+        function calculateScore(className, level, required, attended) {
+            const config = levels[level];
+            let ratioScore = Math.min((attended / required) * config.ratio, config.ratio);
+            const total = ratioScore;
+
+            let ranking;
+            const percentage = (total / config.max) * 100;
+            if (percentage >= 90) {
+                ranking = "Xuất sắc (≥90%)";
+            } else if (percentage >= 70) {
+                ranking = "Tốt (70% - dưới 90%)";
+            } else if (percentage >= 50) {
+                ranking = "Đạt (50% - dưới 70%)";
+            } else {
+                ranking = "Không đạt (<50%)";
+            }
+
+            return { ratioScore, total, ranking };
+        }
+
+        function calculateAndSave() {
+            const className = document.getElementById("className").value;
+            const movementName = document.getElementById("movementName").value;
+            const date = document.getElementById("date").value;
+            const participants = document.getElementById("participants").value || "Không ghi nhận";
+            const level = document.getElementById("level").value;
+            const required = parseInt(document.getElementById("required").value);
+            const attended = parseInt(document.getElementById("attended").value);
+
+            if (!className || !movementName || !date || isNaN(required) || isNaN(attended)) {
+                alert("Vui lòng điền đầy đủ thông tin!");
+                return;
+            }
+
+            const scores = calculateScore(className, level, required, attended);
+
+            document.getElementById("resultMovement").textContent = movementName;
+            document.getElementById("resultDate").textContent = date;
+            document.getElementById("resultParticipants").textContent = participants;
+            document.getElementById("ratioScore").textContent = scores.ratioScore.toFixed(1);
+            document.getElementById("ranking").textContent = scores.ranking;
+            document.getElementById("totalScore").textContent = scores.total.toFixed(1) + " / " + levels[level].max;
+            document.getElementById("result").style.display = "block";
+
+            let history = JSON.parse(localStorage.getItem("doanHistory") || "[]");
+            history.push({ className, movementName, date, participants, level, required, attended, total: scores.total, ranking: scores.ranking });
+            localStorage.setItem("doanHistory", JSON.stringify(history));
+
+            updateHistoryTable();
+        }
+
+        function updateHistoryTable() {
+            const history = JSON.parse(localStorage.getItem("doanHistory") || "[]");
+            const tbody = document.getElementById("historyBody");
+            tbody.innerHTML = "";
+            history.forEach(item => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${item.className}</td>
+                    <td>${item.movementName}</td>
+                    <td>${item.date}</td>
+                    <td>${item.participants}</td>
+                    <td>${item.level}</td>
+                    <td>${item.attended}/${item.required}</td>
+                    <td>${item.total.toFixed(1)}</td>
+                    <td>${item.ranking}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function exportToCSV() {
+            const history = JSON.parse(localStorage.getItem("doanHistory") || "[]");
+            if (history.length === 0) {
+                alert("Chưa có dữ liệu để xuất!");
+                return;
+            }
+
+            let csv = "Lớp,Phong trào,Ngày,Người tham gia,Cấp,Tham gia/Điều động,Tổng điểm,Xếp loại\n";
+            history.forEach(item => {
+                csv += `${item.className},${item.movementName},${item.date},${item.participants},${item.level},${item.attended}/${item.required},${item.total.toFixed(1)},${item.ranking}\n`;
+            });
+
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "doan_history.csv";
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        window.onload = updateHistoryTable;
+    </script>
+</body>
+</html>
