@@ -19,7 +19,11 @@
         th { background-color: #f2f2f2; }
         #exportBtn { background-color: #008CBA; }
         #exportBtn:hover { background-color: #007B9A; }
+        #uploadBtn { background-color: #FF9800; }
+        #uploadBtn:hover { background-color: #F57C00; }
     </style>
+    <!-- Thêm thư viện SheetJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -66,7 +70,9 @@
 
         <div id="history">
             <h3>Lịch sử phong trào</h3>
-            <button id="exportBtn" type="button" onclick="exportToCSV()">Xuất file Excel</button>
+            <input type="file" id="uploadFile" accept=".xlsx, .xls" style="display: none;" onchange="uploadExcel(event)">
+            <button id="uploadBtn" type="button" onclick="document.getElementById('uploadFile').click()">Upload danh sách</button>
+            <button id="exportBtn" type="button" onclick="exportToExcel()">Xuất file Excel</button>
             <table id="historyTable">
                 <thead>
                     <tr>
@@ -163,25 +169,85 @@
             });
         }
 
-        function exportToCSV() {
+        function exportToExcel() {
             const history = JSON.parse(localStorage.getItem("doanHistory") || "[]");
             if (history.length === 0) {
                 alert("Chưa có dữ liệu để xuất!");
                 return;
             }
 
-            let csv = "Lớp,Phong trào,Ngày,Người tham gia,Cấp,Tham gia/Điều động,Tổng điểm,Xếp loại\n";
-            history.forEach(item => {
-                csv += `${item.className},${item.movementName},${item.date},${item.participants},${item.level},${item.attended}/${item.required},${item.total.toFixed(1)},${item.ranking}\n`;
-            });
+            const data = [
+                ["Lớp", "Phong trào", "Ngày", "Người tham gia", "Cấp", "Tham gia/Điều động", "Tổng điểm", "Xếp loại"],
+                ...history.map(item => [
+                    item.className,
+                    item.movementName,
+                    item.date,
+                    item.participants,
+                    item.level,
+                    `${item.attended}/${item.required}`,
+                    item.total.toFixed(1),
+                    item.ranking
+                ])
+            ];
 
-            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "doan_history.csv";
-            a.click();
-            window.URL.revokeObjectURL(url);
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            for (let R = range.s.r; R <= range.e.r; ++R) {
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    const cell_address = { c: C, r: R };
+                    const cell_ref = XLSX.utils.encode_cell(cell_address);
+                    if (!ws[cell_ref]) continue;
+                    ws[cell_ref].s = { font: { name: "Times New Roman", sz: 13 } };
+                }
+            }
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "DoanHistory");
+            XLSX.writeFile(wb, "doan_history.xlsx");
+        }
+
+        function uploadExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                // Bỏ qua tiêu đề (dòng đầu tiên)
+                const headers = jsonData[0];
+                const rows = jsonData.slice(1);
+
+                let history = JSON.parse(localStorage.getItem("doanHistory") || "[]");
+
+                rows.forEach(row => {
+                    const [className, movementName, date, participants, level, attendedRequired, total, ranking] = row;
+                    const [attended, required] = attendedRequired ? attendedRequired.split('/').map(Number) : [0, 0];
+
+                    // Tính lại điểm nếu cần
+                    const scores = calculateScore(className, level, required, attended);
+                    history.push({
+                        className,
+                        movementName,
+                        date,
+                        participants: participants || "Không ghi nhận",
+                        level,
+                        required,
+                        attended,
+                        total: scores.total,
+                        ranking: scores.ranking
+                    });
+                });
+
+                localStorage.setItem("doanHistory", JSON.stringify(history));
+                updateHistoryTable();
+                alert("Đã upload danh sách thành công!");
+            };
+            reader.readAsArrayBuffer(file);
         }
 
         window.onload = updateHistoryTable;
