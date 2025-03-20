@@ -22,7 +22,6 @@
         #uploadBtn { background-color: #FF9800; }
         #uploadBtn:hover { background-color: #F57C00; }
     </style>
-    <!-- Thêm thư viện SheetJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -31,29 +30,22 @@
         <form id="scoreForm">
             <label for="className">Tên lớp:</label>
             <input type="text" id="className" name="className" required placeholder="Ví dụ: CNTT K21">
-
             <label for="movementName">Tên phong trào:</label>
             <input type="text" id="movementName" name="movementName" required placeholder="Ví dụ: Mùa hè xanh">
-
             <label for="date">Ngày tham gia:</label>
             <input type="date" id="date" name="date" required>
-
             <label for="participants">Tên người tham gia:</label>
             <input type="text" id="participants" name="participants" placeholder="Ví dụ: Nguyễn Văn A, Trần Thị B">
-
             <label for="level">Cấp phong trào:</label>
             <select id="level" name="level">
                 <option value="Thành Đoàn">Thành Đoàn (15 điểm)</option>
                 <option value="Quận Đoàn">Quận Đoàn (12 điểm)</option>
                 <option value="Đoàn trường">Đoàn trường (10 điểm)</option>
             </select>
-
             <label for="required">Số người điều động:</label>
             <input type="number" id="required" name="required" min="1" required>
-
             <label for="attended">Số người tham gia:</label>
             <input type="number" id="attended" name="attended" min="0" required>
-
             <button type="button" onclick="calculateAndSave()">Tính và lưu điểm</button>
         </form>
 
@@ -102,19 +94,12 @@
             const config = levels[level];
             let ratioScore = Math.min((attended / required) * config.ratio, config.ratio);
             const total = ratioScore;
-
             let ranking;
             const percentage = (total / config.max) * 100;
-            if (percentage >= 90) {
-                ranking = "Xuất sắc (≥90%)";
-            } else if (percentage >= 70) {
-                ranking = "Tốt (70% - dưới 90%)";
-            } else if (percentage >= 50) {
-                ranking = "Đạt (50% - dưới 70%)";
-            } else {
-                ranking = "Không đạt (<50%)";
-            }
-
+            if (percentage >= 90) ranking = "Xuất sắc (≥90%)";
+            else if (percentage >= 70) ranking = "Tốt (70% - dưới 90%)";
+            else if (percentage >= 50) ranking = "Đạt (50% - dưới 70%)";
+            else ranking = "Không đạt (<50%)";
             return { ratioScore, total, ranking };
         }
 
@@ -145,7 +130,6 @@
             let history = JSON.parse(localStorage.getItem("doanHistory") || "[]");
             history.push({ className, movementName, date, participants, level, required, attended, total: scores.total, ranking: scores.ranking });
             localStorage.setItem("doanHistory", JSON.stringify(history));
-
             updateHistoryTable();
         }
 
@@ -179,14 +163,8 @@
             const data = [
                 ["Lớp", "Phong trào", "Ngày", "Người tham gia", "Cấp", "Tham gia/Điều động", "Tổng điểm", "Xếp loại"],
                 ...history.map(item => [
-                    item.className,
-                    item.movementName,
-                    item.date,
-                    item.participants,
-                    item.level,
-                    `${item.attended}/${item.required}`,
-                    item.total.toFixed(1),
-                    item.ranking
+                    item.className, item.movementName, item.date, item.participants, item.level,
+                    `${item.attended}/${item.required}`, item.total.toFixed(1), item.ranking
                 ])
             ];
 
@@ -218,7 +196,6 @@
                 const worksheet = workbook.Sheets[sheetName];
                 const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-                // Bỏ qua tiêu đề (dòng đầu tiên)
                 const headers = jsonData[0];
                 const rows = jsonData.slice(1);
 
@@ -227,8 +204,6 @@
                 rows.forEach(row => {
                     const [className, movementName, date, participants, level, attendedRequired, total, ranking] = row;
                     const [attended, required] = attendedRequired ? attendedRequired.split('/').map(Number) : [0, 0];
-
-                    // Tính lại điểm nếu cần
                     const scores = calculateScore(className, level, required, attended);
                     history.push({
                         className,
