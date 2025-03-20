@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý điểm phong trào Đoàn</title>
+    <title>Quản lý điểm phong trào Đoàn Trường CĐBK Nam Sài Gòn</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
         .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #333; }
+        h1 { text-align: center; color: #333; margin-top: 10px; }
         label { display: block; margin: 10px 0 5px; font-weight: bold; }
         select, input, button { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
         button { background-color: #4CAF50; color: white; cursor: pointer; }
@@ -19,12 +19,14 @@
         th { background-color: #f2f2f2; }
         #exportBtn { background-color: #008CBA; }
         #exportBtn:hover { background-color: #007B9A; }
+        .logo { display: block; margin: 0 auto 10px; width: 200px; height: auto; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1>Quản lý điểm phong trào Đoàn</h1>
+        <img src="https://via.placeholder.com/150" alt="Logo Đoàn Trường CĐBK Nam Sài Gòn" class="logo">
+        <h1>Quản lý điểm phong trào Đoàn Trường CĐBK Nam Sài Gòn</h1>
         <form id="scoreForm">
             <label for="className">Tên lớp:</label>
             <input type="text" id="className" name="className" required placeholder="Ví dụ: CNTT K21">
