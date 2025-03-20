@@ -21,6 +21,11 @@
         #exportBtn:hover { background-color: #007B9A; }
         #uploadBtn { background-color: #FF9800; }
         #uploadBtn:hover { background-color: #F57C00; }
+        #confirmUpload { display: none; margin-top: 10px; padding: 10px; border: 1px solid #ddd; background: #f9f9f9; }
+        #confirmBtn { background-color: #2196F3; }
+        #confirmBtn:hover { background-color: #1976D2; }
+        #cancelBtn { background-color: #f44336; }
+        #cancelBtn:hover { background-color: #d32f2f; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -62,9 +67,15 @@
 
         <div id="history">
             <h3>Lịch sử phong trào</h3>
-            <input type="file" id="uploadFile" accept=".xlsx, .xls" style="display: none;" onchange="uploadExcel(event)">
+            <input type="file" id="uploadFile" accept=".xlsx, .xls" style="display: none;" onchange="previewUpload(event)">
             <button id="uploadBtn" type="button" onclick="document.getElementById('uploadFile').click()">Upload danh sách</button>
             <button id="exportBtn" type="button" onclick="exportToExcel()">Xuất file Excel</button>
+            <div id="confirmUpload">
+                <p>Đã chọn file: <span id="fileName"></span></p>
+                <p>Số người tham gia: <span id="rowCount"></span></p>
+                <button id="confirmBtn" type="button" onclick="confirmUpload()">Xác nhận</button>
+                <button id="cancelBtn" type="button" onclick="cancelUpload()">Hủy</button>
+            </div>
             <table id="historyTable">
                 <thead>
                     <tr>
@@ -184,7 +195,9 @@
             XLSX.writeFile(wb, "doan_history.xlsx");
         }
 
-        function uploadExcel(event) {
+        let uploadedData = null;
+
+        function previewUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
 
@@ -196,33 +209,64 @@
                 const worksheet = workbook.Sheets[sheetName];
                 const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
+                if (jsonData.length < 2) {
+                    alert("File Excel rỗng hoặc không có dữ liệu!");
+                    return;
+                }
+
                 const headers = jsonData[0];
-                const rows = jsonData.slice(1);
+                if (headers.length !== 1 || headers[0] !== "Họ tên") {
+                    alert("File Excel phải có duy nhất một cột 'Họ tên'!");
+                    return;
+                }
 
-                let history = JSON.parse(localStorage.getItem("doanHistory") || "[]");
+                const participants = jsonData.slice(1).map(row => row[0]).filter(name => name);
+                uploadedData = participants;
 
-                rows.forEach(row => {
-                    const [className, movementName, date, participants, level, attendedRequired, total, ranking] = row;
-                    const [attended, required] = attendedRequired ? attendedRequired.split('/').map(Number) : [0, 0];
-                    const scores = calculateScore(className, level, required, attended);
-                    history.push({
-                        className,
-                        movementName,
-                        date,
-                        participants: participants || "Không ghi nhận",
-                        level,
-                        required,
-                        attended,
-                        total: scores.total,
-                        ranking: scores.ranking
-                    });
-                });
-
-                localStorage.setItem("doanHistory", JSON.stringify(history));
-                updateHistoryTable();
-                alert("Đã upload danh sách thành công!");
+                document.getElementById("fileName").textContent = file.name;
+                document.getElementById("rowCount").textContent = participants.length;
+                document.getElementById("confirmUpload").style.display = "block";
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        function confirmUpload() {
+            if (!uploadedData) return;
+
+            const className = document.getElementById("className").value || "Lớp mặc định";
+            const movementName = document.getElementById("movementName").value || "Phong trào mặc định";
+            const date = document.getElementById("date").value || "2025-03-20";
+            const level = document.getElementById("level").value || "Đoàn trường";
+            const required = parseInt(document.getElementById("required").value) || 10;
+            const attended = uploadedData.length; // Số người tham gia = số tên trong file
+
+            let history = JSON.parse(localStorage.getItem("doanHistory") || "[]");
+
+            uploadedData.forEach(participant => {
+                const scores = calculateScore(className, level, required, attended);
+                history.push({
+                    className,
+                    movementName,
+                    date,
+                    participants: participant,
+                    level,
+                    required,
+                    attended,
+                    total: scores.total,
+                    ranking: scores.ranking
+                });
+            });
+
+            localStorage.setItem("doanHistory", JSON.stringify(history));
+            updateHistoryTable();
+            alert("Đã upload danh sách thành công!");
+            cancelUpload();
+        }
+
+        function cancelUpload() {
+            uploadedData = null;
+            document.getElementById("confirmUpload").style.display = "none";
+            document.getElementById("uploadFile").value = "";
         }
 
         window.onload = updateHistoryTable;
