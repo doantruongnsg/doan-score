@@ -1,9 +1,100 @@
-const firebaseConfig = {
-    apiKey: "AIzaSy...",
-    authDomain: "doan-score-attendance.firebaseapp.com",
-    databaseURL: "https://doan-score-attendance-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "doan-score-attendance",
-    storageBucket: "doan-score-attendance.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "1:123456789:web:YmEyNTI4MmMtMDQxYy00NjZlLTlmMmYtM2RmOTNjODM1MGM1"
-};
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Điểm danh - Đoàn Trường CĐBK Nam Sài Gòn</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #333; margin-top: 10px; }
+        label { display: block; margin: 10px 0 5px; font-weight: bold; }
+        input, button { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: #4CAF50; color: white; cursor: pointer; }
+        button:hover { background-color: #45a049; }
+        .logo { display: block; margin: 0 auto 10px; width: 200px; height: auto; }
+    </style>
+    <!-- Thêm Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+</head>
+<body>
+    <div class="container">
+        <img src="https://doantruongnsg.github.io/doan-score/logo_doan.png" alt="Logo Đoàn Trường CĐBK Nam Sài Gòn" class="logo">
+        <h1>Điểm danh<br>Đoàn Trường CĐBK Nam Sài Gòn</h1>
+
+        <!-- Form điểm danh -->
+        <form id="checkInForm">
+            <label for="eventName">Tên lớp học/sự kiện:</label>
+            <input type="text" id="eventName" name="eventName" readonly>
+            <label for="eventDate">Ngày diễn ra:</label>
+            <input type="text" id="eventDate" name="eventDate" readonly>
+            <label for="studentName">Họ và tên:</label>
+            <input type="text" id="studentName" name="studentName" required placeholder="Ví dụ: Nguyễn Văn A">
+            <label for="studentId">Mã số sinh viên:</label>
+            <input type="text" id="studentId" name="studentId" required placeholder="Ví dụ: 123456">
+            <button type="button" onclick="submitAttendance()">Ghi nhận điểm danh</button>
+        </form>
+    </div>
+
+    <script>
+        // Cấu hình Firebase (thay bằng cấu hình thật của bạn)
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            databaseURL: "YOUR_DATABASE_URL",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Khởi tạo Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Lấy thông tin từ query parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventName = urlParams.get("event") || "Không xác định";
+        const eventDate = urlParams.get("date") || "Không xác định";
+
+        // Hiển thị thông tin lớp học/sự kiện
+        document.getElementById("eventName").value = decodeURIComponent(eventName);
+        document.getElementById("eventDate").value = decodeURIComponent(eventDate);
+
+        // Ghi nhận điểm danh
+        function submitAttendance() {
+            const studentName = document.getElementById("studentName").value;
+            const studentId = document.getElementById("studentId").value;
+
+            if (!studentName || !studentId) {
+                alert("Vui lòng điền đầy đủ thông tin!");
+                return;
+            }
+
+            const timestamp = new Date().toLocaleString("vi-VN");
+            const attendanceRecord = {
+                eventName: decodeURIComponent(eventName),
+                eventDate: decodeURIComponent(eventDate),
+                studentName: studentName,
+                studentId: studentId,
+                timestamp: timestamp
+            };
+
+            // Lưu dữ liệu vào Firebase
+            const newRecordRef = database.ref("attendance").push();
+            newRecordRef.set(attendanceRecord)
+                .then(() => {
+                    alert("Điểm danh thành công!");
+                    document.getElementById("checkInForm").reset();
+                    document.getElementById("eventName").value = decodeURIComponent(eventName);
+                    document.getElementById("eventDate").value = decodeURIComponent(eventDate);
+                })
+                .catch((error) => {
+                    console.error("Lỗi khi lưu dữ liệu:", error);
+                    alert("Đã có lỗi xảy ra, vui lòng thử lại!");
+                });
+        }
+    </script>
+</body>
+</html>
