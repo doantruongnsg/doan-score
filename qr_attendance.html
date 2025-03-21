@@ -24,7 +24,6 @@
   </div>
 
   <script>
-    // Cấu hình Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyACZMufNF-tBU3FspunQBUHj8jV7-oaQW8",
       authDomain: "doan-score-attendance.firebaseapp.com",
@@ -36,30 +35,66 @@
       measurementId: "G-W5E98QT3WS"
     };
 
-    // Khởi tạo Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
     function onScanSuccess(decodedText, decodedResult) {
-      const timestamp = new Date().toISOString();
+      const studentId = decodedText;
+      const today = new Date().toISOString().split('T')[0]; // yyyy-mm-dd
 
-      db.ref("attendance").push({
-        student_id: decodedText,
-        time: timestamp
-      }).then(() => {
-        document.getElementById('result').innerHTML = `
-          <div class="alert alert-success">
-            <strong>\u0110\u00e3 l\u01b0u v\u00e0o h\u1ec7 th\u1ed1ng:</strong> ${decodedText} <br>
-            Thời gian: ${timestamp}
-          </div>
-        `;
-        html5QrcodeScanner.clear();
-      }).catch(error => {
-        document.getElementById('result').innerHTML = `
-          <div class="alert alert-danger">
-            Lỗi lưu dữ liệu: ${error.message}
-          </div>
-        `;
+      // Lấy thông tin sinh viên
+      db.ref(`students/${studentId}`).once('value').then(snapshot => {
+        if (snapshot.exists()) {
+          const student = snapshot.val();
+          const studentName = student.name;
+          const studentClass = student.class;
+
+          // Kiểm tra đã điểm danh hôm nay chưa
+          db.ref("attendance").orderByChild("student_id").equalTo(studentId).once("value")
+            .then(attSnapshot => {
+              let alreadyCheckedIn = false;
+
+              attSnapshot.forEach(record => {
+                const recordDate = new Date(record.val().time).toISOString().split('T')[0];
+                if (recordDate === today) {
+                  alreadyCheckedIn = true;
+                }
+              });
+
+              if (alreadyCheckedIn) {
+                document.getElementById('result').innerHTML = `
+                  <div class="alert alert-warning">
+                    ${studentName} (${studentClass}) đã điểm danh hôm nay.<br>
+                    Vui lòng không quét lần nữa.
+                  </div>
+                `;
+              } else {
+                const timestamp = new Date().toISOString();
+                db.ref("attendance").push({
+                  student_id: studentId,
+                  name: studentName,
+                  class: studentClass,
+                  time: timestamp
+                }).then(() => {
+                  document.getElementById('result').innerHTML = `
+                    <div class="alert alert-success">
+                      Điểm danh thành công!<br>
+                      Tên: ${studentName}<br>
+                      Lớp: ${studentClass}<br>
+                      Thời gian: ${timestamp}
+                    </div>
+                  `;
+                  html5QrcodeScanner.clear();
+                });
+              }
+            });
+        } else {
+          document.getElementById('result').innerHTML = `
+            <div class="alert alert-danger">
+              Không tìm thấy sinh viên có mã: ${studentId}
+            </div>
+          `;
+        }
       });
     }
 
