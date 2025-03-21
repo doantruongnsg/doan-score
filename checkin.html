@@ -1,101 +1,40 @@
-<!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Điểm danh - Đoàn Trường CĐBK Nam Sài Gòn</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #333; margin-top: 10px; }
-        label { display: block; margin: 10px 0 5px; font-weight: bold; }
-        input, button { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
-        button { background-color: #4CAF50; color: white; cursor: pointer; }
-        button:hover { background-color: #45a049; }
-        .logo { display: block; margin: 0 auto 10px; width: 200px; height: auto; }
-    </style>
-    <!-- Thêm Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Check-in</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
-<body>
-    <div class="container">
-        <img src="https://doantruongnsg.github.io/doan-score/logo_doan.png" alt="Logo Đoàn Trường CĐBK Nam Sài Gòn" class="logo">
-        <h1>Điểm danh<br>Đoàn Trường CĐBK Nam Sài Gòn</h1>
-
-        <!-- Form điểm danh -->
-        <form id="checkInForm">
-            <label for="eventName">Tên lớp học/sự kiện:</label>
-            <input type="text" id="eventName" name="eventName" readonly>
-            <label for="eventDate">Ngày diễn ra:</label>
-            <input type="text" id="eventDate" name="eventDate" readonly>
-            <label for="studentName">Họ và tên:</label>
-            <input type="text" id="studentName" name="studentName" required placeholder="Ví dụ: Nguyễn Văn A">
-            <label for="studentId">Mã số sinh viên:</label>
-            <input type="text" id="studentId" name="studentId" required placeholder="Ví dụ: 123456">
-            <button type="button" onclick="submitAttendance()">Ghi nhận điểm danh</button>
-        </form>
+<body class="bg-light">
+  <div class="container py-5">
+    <h2 class="text-center mb-4">Xác nhận Check-in</h2>
+    <div class="text-center">
+      <button id="checkin-btn" class="btn btn-primary">Check-in ngay</button>
+      <div id="checkin-result" class="mt-3"></div>
     </div>
+  </div>
 
-    <script>
-        // Cấu hình Firebase (thay bằng cấu hình thật của bạn)
-        const firebaseConfig = {
-  apiKey: "AIzaSyACZMufNF-tBU3FspunQBUHj8jV7-oaQW8",
-  authDomain: "doan-score-attendance.firebaseapp.com",
-  databaseURL: "https://doan-score-attendance-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "doan-score-attendance",
-  storageBucket: "doan-score-attendance.firebasestorage.app",
-  messagingSenderId: "85828847386",
-  appId: "1:85828847386:web:939838e210ddad1268cea3",
-  measurementId: "G-W5E98QT3WS"
-};
-
-        // Khởi tạo Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-
-        // Lấy thông tin từ query parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        const eventName = urlParams.get("event") || "Không xác định";
-        const eventDate = urlParams.get("date") || "Không xác định";
-
-        // Hiển thị thông tin lớp học/sự kiện
-        document.getElementById("eventName").value = decodeURIComponent(eventName);
-        document.getElementById("eventDate").value = decodeURIComponent(eventDate);
-
-        // Ghi nhận điểm danh
-        function submitAttendance() {
-            const studentName = document.getElementById("studentName").value;
-            const studentId = document.getElementById("studentId").value;
-
-            if (!studentName || !studentId) {
-                alert("Vui lòng điền đầy đủ thông tin!");
-                return;
-            }
-
-            const timestamp = new Date().toLocaleString("vi-VN");
-            const attendanceRecord = {
-                eventName: decodeURIComponent(eventName),
-                eventDate: decodeURIComponent(eventDate),
-                studentName: studentName,
-                studentId: studentId,
-                timestamp: timestamp
-            };
-
-            // Lưu dữ liệu vào Firebase
-            const newRecordRef = database.ref("attendance").push();
-            newRecordRef.set(attendanceRecord)
-                .then(() => {
-                    alert("Điểm danh thành công!");
-                    document.getElementById("checkInForm").reset();
-                    document.getElementById("eventName").value = decodeURIComponent(eventName);
-                    document.getElementById("eventDate").value = decodeURIComponent(eventDate);
-                })
-                .catch((error) => {
-                    console.error("Lỗi khi lưu dữ liệu:", error);
-                    alert("Đã có lỗi xảy ra, vui lòng thử lại!");
-                });
-        }
-    </script>
+  <script>
+    $(document).ready(function() {
+      $('#checkin-btn').click(function() {
+        // Giả sử gửi dữ liệu check-in về server
+        // Đổi URL API thích hợp
+        $.post('/api/checkin', { student_id: '12345' }, function(response) {
+          $('#checkin-result').html(`
+            <div class="alert alert-success">
+              Điểm danh thành công!<br>Mã sinh viên: 12345
+            </div>
+          `);
+        }).fail(function() {
+          $('#checkin-result').html(`
+            <div class="alert alert-danger">
+              Điểm danh thất bại. Vui lòng thử lại.
+            </div>
+          `);
+        });
+      });
+    });
+  </script>
 </body>
 </html>
